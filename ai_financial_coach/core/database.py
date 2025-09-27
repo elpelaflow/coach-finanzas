@@ -49,6 +49,15 @@ def save_movements_to_db(
         conn.commit()
 
 
+def clear_db(db_path: Optional[Path] = None) -> None:
+    """Eliminar todos los movimientos almacenados en la base de datos."""
+    path = resolve_db_path(db_path)
+    init_db(path)
+    with sqlite3.connect(path) as conn:
+        conn.execute("DELETE FROM movements")
+        conn.commit()
+
+
 def fetch_data_from_db(
     start_date: date, end_date: Optional[date] = None, db_path: Optional[Path] = None
 ) -> pd.DataFrame:

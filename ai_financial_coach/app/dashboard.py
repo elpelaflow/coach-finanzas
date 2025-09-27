@@ -11,7 +11,7 @@ import streamlit as st
 from ai_financial_coach.agents import AgentTeam
 from ai_financial_coach.app.components import display_budget_analysis
 from ai_financial_coach.app.context import get_agent_team, get_shared_state, reload_prompts
-from ai_financial_coach.core.database import fetch_data_from_db, save_movements_to_db
+from ai_financial_coach.core.database import clear_db, fetch_data_from_db, save_movements_to_db
 from ai_financial_coach.core.schemas import BudgetAnalysis, MessageType
 from ai_financial_coach.core.state import SharedState
 from ai_financial_coach.core.system import FinanceAdvisorSystem
@@ -21,6 +21,8 @@ def ensure_session_state() -> None:
     st.session_state.setdefault("movements", [])
     st.session_state.setdefault("analysis_results", None)
     st.session_state.setdefault("last_round_outputs", {})
+    st.session_state.setdefault("show_reset_prompt", False)
+    st.session_state.setdefault("reset_db_password", "")
 
 
 def add_movement(entry: Dict[str, Any]) -> None:
@@ -73,6 +75,55 @@ def render_sidebar() -> None:
             mime="application/json",
             disabled=df.empty,
         )
+
+        st.divider()
+        st.caption("Herramientas de mantenimiento")
+
+        if st.button(
+            "Reset DB",
+            type="secondary",
+            help="Borra definitivamente todos los movimientos guardados.",
+            use_container_width=False,
+        ):
+            st.session_state.show_reset_prompt = True
+
+        if st.session_state.show_reset_prompt:
+            st.text_input(
+                "Ingresar contraseña",
+                type="password",
+                key="reset_db_password",
+                placeholder="••••",
+            )
+            confirm_col, cancel_col = st.columns(2)
+
+            with confirm_col:
+                if st.button(
+                    "Confirmar",
+                    key="confirm_reset_db",
+                    type="primary",
+                    use_container_width=True,
+                ):
+                    if st.session_state.reset_db_password == "2345":
+                        try:
+                            clear_db()
+                            st.session_state.movements = []
+                            st.success("Base de datos reiniciada correctamente.")
+                            st.session_state.show_reset_prompt = False
+                            st.session_state.reset_db_password = ""
+                        except Exception as exc:  # pragma: no cover - defensivo
+                            st.error(f"No se pudo reiniciar la base de datos: {exc}")
+                    else:
+                        st.warning("Contraseña incorrecta. Intenta nuevamente.")
+
+            with cancel_col:
+                if st.button(
+                    "Cancelar",
+                    key="cancel_reset_db",
+                    type="secondary",
+                    use_container_width=True,
+                ):
+                    st.session_state.show_reset_prompt = False
+                    st.session_state.reset_db_password = ""
 
 def render_forms() -> None:
     col1, col2, col3 = st.columns(3)
