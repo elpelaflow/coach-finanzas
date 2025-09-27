@@ -1,0 +1,103 @@
+Guia de uso - Dashboard Coach Financiero IA
+==========================================
+
+Descripcion general
+-------------------
+El dashboard del Coach Financiero IA esta diseñado para ayudarte a registrar movimientos, ejecutar analisis con el equipo multi-agente y visualizar los resultados en tiempo real. Cuenta con varias pestañas orientadas a tareas especificas y una nueva seccion "Equipo IA" que permite seguir la conversacion interna del equipo de agentes. Esta guia explica cada area del dashboard y como aprovecharla al maximo.
+
+Barra lateral
+-------------
+- Titulo y descripcion: recuerda el proposito de la app.
+- Controles de descarga: permiten exportar los movimientos (se habilitaran cuando existan datos listos).
+- Selector de fechas "Desde"/"Hasta": planificado para filtros de consulta historica.
+
+Pestaña "Movimientos"
+----------------------
+### Objetivo
+Registrar ingresos, gastos y deudas de la sesion actual y lanzar el analisis.
+
+### Componentes
+1. Formularios de ingreso de datos:
+   - *Ingresos*: selecciona el tipo (Transferencia, Debito, Credito, Efectivo), ingresa el monto y comenta si quieres.
+   - *Gastos*: define categoria (Fijo, Variable, Discrecional), monto y comentario.
+   - *Deudas*: elige tipo (Tarjeta de credito, Prestamo, Emergencia), monto y comentario.
+   Cada formulario tiene un boton («Anadir…»). Si el monto es mayor a cero, se agrega al listado de movimientos en la sesion.
+
+2. Tabla de movimientos registrados:
+   - Muestra las entradas cargadas durante la sesion actual.
+   - Se limpia automaticamente cuando se ejecuta un analisis exitoso.
+
+3. Boton "Analizar finanzas":
+   - Calcula ingresos totales, gastos manuales y deudas.
+   - Ejecuta el analisis base y dispara una ronda del equipo multi-agente.
+   - Guarda los movimientos en la base SQLite, limpia la sesion y actualiza las otras pestañas.
+
+4. Indicadores y grafico (post-analisis):
+   - Muestra ingresos totales, gastos totales y balance.
+   - Pie chart de distribucion de gastos.
+
+Pestaña "Presupuesto"
+---------------------
+### Objetivo
+Ver el resumen del presupuesto producido por el agente Budget.
+
+### Componentes
+- Indicadores de ingresos, gastos y balance.
+- Pie chart con la distribucion de gastos por categoria.
+- Mensaje informativo si aún no se ejecuta un analisis o no hay datos.
+
+Pestaña "Ahorro"
+----------------
+### Objetivo
+Consultar la estrategia propuesta por el agente Savings.
+
+### Componentes
+- Metricas clave: excedente disponible, monto sugerido para fondo de emergencia y automatizaciones.
+- Lista de recomendaciones rapidas (50/30/20).
+- Mensaje informativo si aun no existe propuesta (ejecutar analisis o nueva ronda).
+
+Pestaña "Deuda"
+----------------
+### Objetivo
+Revisar el plan sugerido por el agente Debt.
+
+### Componentes
+- Metricas de total de deuda y excedente disponible.
+- Tabla comparativa de montos destinados a avalanche y snowball.
+- Mensaje informativo si todavía no hay plan registrado.
+
+Pestaña "Equipo IA"
+-------------------
+### Objetivo
+Interactuar con el Manager y seguir la conversacion del equipo multi-agente en tiempo real.
+
+### Componentes
+1. Chat con el Manager:
+   - Formulario para enviar mensajes al Manager.
+   - Muestra las ultimas 20 interacciones (usuario y Manager).
+
+2. Estado de objetivos:
+   - Vista JSON con los objetivos actuales del SharedState.
+
+3. Delegaciones del Manager:
+   - Tabla (si hay datos) con las delegaciones registradas.
+
+4. Timeline del equipo:
+   - Boton "Nueva ronda de analisis" para disparar otra ronda manual.
+   - Tabla filtrable por agentes y tipos de mensaje (FINDING, ALERT, PROPOSAL, etc.).
+   - Expander con el JSON de la ultima ronda ejecutada.
+
+Recomendaciones de uso
+----------------------
+1. Siempre registra todos los movimientos relevantes antes de presionar "Analizar finanzas".
+2. Usa la pestaña Equipo IA despues de cada analisis para ver que descubrio cada agente y responder al Manager.
+3. Dispara rondas adicionales desde Equipo IA cuando realices cambios en objetivos o recibas nuevas preguntas.
+4. Actualiza los prompts en `ai_financial_coach/prompts/` si necesitas ajustar el tono o comportamiento del equipo.
+5. Para depurar, puedes consultar el log interno desde la pestaña Movimientos (expander de debug).
+
+Preguntas frecuentes
+--------------------
+- **¿Por que no veo datos en Presupuesto/Ahorro/Deuda?** Debes ejecutar "Analizar finanzas" o una nueva ronda para que los agentes generen hallazgos.
+- **¿Se guardan mis movimientos?** Sí, cada analisis exitoso persiste los movimientos en `database.db`.
+- **¿Puedo reiniciar el estado?** Reinicia la aplicacion de Streamlit o implementa un boton que llame a `reset_shared_state()`.
+

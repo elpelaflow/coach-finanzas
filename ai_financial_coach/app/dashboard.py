@@ -91,7 +91,7 @@ def render_forms() -> None:
             st.subheader("Gastos")
             gasto_cat = st.radio(
                 "Categoria de gasto",
-                ["Fijo", "Variable", "Discrecional"],
+                ["Fijo", "Variable", "Discrecional", "Urgente"],
                 key="gasto_tipo",
                 horizontal=True,
             )
@@ -136,7 +136,7 @@ def render_forms() -> None:
                     add_movement(
                         {
                             "timestamp": datetime.now().isoformat(),
-                            "type": "Deuda",
+                            "type": "Urgente",
                             "category": deuda_cat,
                             "amount": deuda_monto,
                             "comment": deuda_comentario,
@@ -175,7 +175,7 @@ def run_analysis(
             "min_payment": 0,
         }
         for movement in movements
-        if movement["type"] == "Deuda"
+        if movement["type"] == "Urgente"
     ]
 
     financial_data = {
@@ -394,7 +394,7 @@ def render_dashboard() -> None:
             "Movimientos",
             "Presupuesto",
             "Ahorro",
-            "Deuda",
+            "Urgente",
             "Equipo IA",
         ]
     )
