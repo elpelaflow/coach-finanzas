@@ -1,79 +1,80 @@
-# AI Financial Coach Agent with Google ADK 💰
+# AI Financial Coach - Multi-Agent Streamlit App
 
-The **AI Financial Coach** is a personalized financial advisor powered by Google's ADK (Agent Development Kit) framework. This app provides comprehensive financial analysis and recommendations based on user inputs including income, expenses, debts, and financial goals.
+The **AI Financial Coach** is a modular Streamlit application that orchestrates a team of financial agents through a shared message bus. Each specialist focuses on budget, savings, debt, investments, or advisory insights while a conversational Manager coordinates the workflow and keeps the user in the loop. Results are surfaced in the classic financial dashboards plus a new *Equipo IA* tab that reveals the internal peer-to-peer conversation.
 
-## Features
+## Key Capabilities
 
-- **Multi-Agent Financial Analysis System**
-    - Budget Analysis Agent: Analyzes spending patterns and recommends optimizations
-    - Savings Strategy Agent: Creates personalized savings plans and emergency fund strategies
-    - Debt Reduction Agent: Develops optimized debt payoff strategies using avalanche and snowball methods
+- **Peer-to-Peer Agent Team**
+  - Manager agent collects context from the user, clarifies gaps, and publishes briefs with delegations.
+  - Budget, Savings, Debt, and (optional) Investment agents collaborate through the bus using typed messages (`FINDING`, `ALERT`, `PROPOSAL`, etc.).
+  - Advisor agent synthesises the round into human-friendly action steps.
+- **Prompt-Driven Personalities**
+  - Every agent loads its system prompt from `ai_financial_coach/prompts/*.txt` so tone and behaviour can be edited without touching code.
+  - A shared protocol file defines messaging rules to keep communication consistent across the team.
+- **Shared State & Message Bus**
+  - Central `SharedState` tracks inputs, goals, findings, plans, and the chronological bus log.
+  - Incremental cursors allow agents to react only to new information and avoid infinite loops.
+- **Dual UI Experience**
+  - Existing tabs for *Movements*, *Budget*, *Savings*, and *Debt* keep their visuals and metrics.
+  - New *Equipo IA* tab offers chat with the Manager, live objectives snapshot, delegation list, and a filterable timeline of the internal conversation.
 
-- **Expense Analysis**:
-  - Supports both CSV upload and manual expense entry
-  - CSV transaction analysis with date, category, and amount tracking
-  - Visual breakdown of spending by category
-  - Automated expense categorization and pattern detection
+## Project Structure
 
-- **Savings Recommendations**:
-  - Emergency fund sizing and building strategies
-  - Custom savings allocations across different goals
-  - Practical automation techniques for consistent saving
-  - Progress tracking and milestone recommendations
+```
+ai_financial_coach/
++-- app/
+|   +-- main.py              # Streamlit entry point
+|   +-- dashboard.py         # Multi-tab UI and analysis workflow
+|   +-- components.py        # Reusable visual components
+|   +-- context.py           # Session-wide shared state & agent factory
++-- agents/
+|   +-- *.py                 # Manager, Budget, Savings, Debt, Investment, Advisor
+|   +-- team.py              # Orchestrates rounds and prompt loading
++-- core/
+|   +-- base_agent.py        # Common agent interface
+|   +-- state.py             # SharedState and helpers
+|   +-- message_bus.py       # Internal bus with cursors
+|   +-- prompts.py           # Prompt loader utilities
+|   +-- system.py            # Legacy single-pass analysis placeholder
+|   +-- database.py          # SQLite helpers for movements
+|   +-- schemas.py           # Pydantic models & enums
++-- prompts/
+    +-- 00_shared_protocol.txt
+    +-- manager_agent.txt
+    +-- budget_agent.txt
+    +-- savings_agent.txt
+    +-- debt_agent.txt
+    +-- investment_agent.txt
+    +-- advisor_agent.txt
+```
 
-- **Debt Management**:
-  - Multiple debt handling with interest rate optimization
-  - Comparison between avalanche and snowball methods
-  - Visual debt payoff timeline and interest savings analysis
-  - Actionable debt reduction recommendations
+The legacy single-file implementation remains available as `ai_financial_coach_agent_backup.py` for reference.
 
-- **Interactive Visualizations**:
-  - Pie charts for expense breakdown
-  - Bar charts for income vs. expenses
-  - Debt comparison graphs
-  - Progress tracking metrics
+## Running the App
 
-
-## How to Run
-
-Follow the steps below to set up and run the application:
-
-1. **Get API Key**:
-   - Get a free Gemini API Key from Google AI Studio: https://aistudio.google.com/apikey
-   - Create a `.env` file in the project root and add your API key:
-     ```
-     GOOGLE_API_KEY=your_api_key_here
-     ```
-
-2. **Clone the Repository**:
-   ```bash
-   git clone https://github.com/Shubhamsaboo/awesome-llm-apps.git
-   cd awesome-llm-apps/advanced_ai_agents/multi_agent_apps/ai_financial_coach_agent/
-   ```
-
-3. **Install Dependencies**:
+1. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
-
-4. **Run the Streamlit App**:
+2. **Optional:** configure LLM credentials if you plan to connect the agents to OpenRouter later on. The current scaffolding does not require network calls, but the client expects `OPENROUTER_API_KEY` when enabled.
+   ```bash
+   export OPENROUTER_API_KEY=your_key
+   ```
+3. **Launch Streamlit**
    ```bash
    streamlit run ai_financial_coach_agent.py
    ```
 
-## CSV File Format
+## Using the Dashboard
 
-The application accepts CSV files with the following required columns:
-- `Date`: Transaction date in YYYY-MM-DD format
-- `Category`: Expense category
-- `Amount`: Transaction amount (supports currency symbols and comma formatting)
+- Register incomes, expenses, and debts on the **Movements** tab, then click *Analizar finanzas* to trigger the first round.
+- Review the classic cards and charts in the **Presupuesto**, **Ahorro**, and **Deuda** tabs (they draw data from the shared state populated by the agents).
+- Open **Equipo IA** to chat with the Manager, inspect objectives, refresh delegations, kick off additional rounds, and filter the internal timeline by agent or message type.
 
-Example:
-```csv
-Date,Category,Amount
-2024-01-01,Housing,1200.00
-2024-01-02,Food,150.50
-2024-01-03,Transportation,45.00
-```
+## Editing Prompts
 
-A template CSV file can be downloaded directly from the application's sidebar.
+Prompts live under `ai_financial_coach/prompts/`. Modify the text files to adjust tone or operating procedures. Restarting the Streamlit app reloads the prompts; alternatively call `reload_prompts()` inside `app/context.py` if you wire a UI control for hot reloading.
+
+---
+
+Questions or ideas for extending the multi-agent workflow (persistence, richer LLM integrations, automated testing) are welcome-feel free to open an issue or share feedback.

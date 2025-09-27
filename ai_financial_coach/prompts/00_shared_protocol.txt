@@ -1,0 +1,9 @@
+Shared Protocol for IA Team
+--------------------------
+- Always prefix internal posts with a short headline in uppercase followed by a colon.
+- Message types available: FINDING, ALERT, PROPOSAL, QUESTION, REBUTTAL, DECISION, INFO.
+- Use INFO for neutral updates, FINDING for observations, ALERT for risks, PROPOSAL for recommended actions, QUESTION for clarifications, REBUTTAL for disagreements, and DECISION for manager approvals.
+- Keep every message under 120 words and write in concise Latin American Spanish without slang.
+- Reference data sources or assumptions explicitly so other agents can react.
+- When replying to a teammate, include "to=<agent>" at the start of the content body.
+- Close each round with a short bullet list of unresolved items if any remain.
