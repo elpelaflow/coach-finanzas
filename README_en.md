@@ -65,6 +65,24 @@ The legacy single-file implementation remains available as `ai_financial_coach_a
    streamlit run ai_financial_coach_agent.py
    ```
 
+## LLM Configuration
+
+1. Create a `.env` file in the project root (already present in this repo).
+2. Add your OpenRouter key (or update the existing one) in the following format:
+   ```
+   OPENROUTER_API_KEY="your_openrouter_api_key"
+   ```
+3. When you launch the Streamlit app, the key loads automatically via `python-dotenv`.
+4. To switch models, set `OPENROUTER_MODEL` or use the default `openrouter/auto`.
+
+If you prefer to set the key temporarily, you can export it before running Streamlit:
+```bash
+export OPENROUTER_API_KEY=your_openrouter_api_key
+```
+```
+setx OPENROUTER_API_KEY "your_openrouter_api_key"  # Windows
+```
+
 ## Using the Dashboard
 
 - Register incomes, expenses, and debts on the **Movements** tab, then click *Analizar finanzas* to trigger the first round.

@@ -65,6 +65,24 @@ La implementacion monolitica anterior sigue disponible como `ai_financial_coach_
    streamlit run ai_financial_coach_agent.py
    ```
 
+## Configuracion del LLM
+
+1. Crea un archivo `.env` en la raiz del proyecto (ya incluido en este repositorio).
+2. Agrega tu clave de OpenRouter (o reemplaza la existente) con el siguiente formato:
+   ```
+   OPENROUTER_API_KEY="tu_clave_openrouter"
+   ```
+3. Al iniciar la app de Streamlit, la clave se carga automaticamente gracias a `python-dotenv`.
+4. Para cambiar de modelo, define `OPENROUTER_MODEL` o usa el valor por defecto `openrouter/auto`.
+
+Si prefieres definir la clave de forma temporal, exportala antes de ejecutar Streamlit:
+```bash
+export OPENROUTER_API_KEY=tu_clave_openrouter
+```
+```
+setx OPENROUTER_API_KEY "tu_clave_openrouter"  # Windows
+```
+
 ## Uso del Tablero
 
 - Registra ingresos, gastos y deudas en la pestaNa **Movimientos** y ejecuta *Analizar finanzas* para iniciar la ronda.

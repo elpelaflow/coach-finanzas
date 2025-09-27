@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import streamlit as st
+from dotenv import load_dotenv
 
 from ai_financial_coach.app.context import get_prompt_loader
 from ai_financial_coach.app.dashboard import render_dashboard
@@ -16,6 +17,7 @@ def ensure_prompts_loaded() -> None:
 
 
 def main() -> None:
+    load_dotenv()
     st.set_page_config(page_title="Asesor Financiero ARS", layout="wide")
     init_db()
     ensure_prompts_loaded()
@@ -24,3 +26,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
