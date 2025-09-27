@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from openai import OpenAI
 
@@ -30,7 +31,7 @@ class LLMClient:
         base_url: Optional[str] = None,
         model: Optional[str] = None,
     ) -> None:
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
+        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY") or os.environ.get("OPENAI_API_KEY")
         self.base_url = base_url or os.environ.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL)
         self.model = model or DEFAULT_MODEL
         self._client: Optional[OpenAI] = None
@@ -62,6 +63,33 @@ class LLMClient:
             payload.update(extra)
         response = self.client.chat.completions.create(**payload)
         return response.to_dict()
+
+    def complete_with_metrics(
+        self,
+        messages: Sequence[ChatMessage],
+        *,
+        temperature: float = 0.1,
+        max_tokens: Optional[int] = None,
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[str, Dict[str, Any]]:
+        start = time.perf_counter()
+        raw = self.complete(
+            messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            extra=extra,
+        )
+        latency = time.perf_counter() - start
+        choice = raw.get("choices", [{}])[0]
+        content = choice.get("message", {}).get("content", "")
+        usage = raw.get("usage", {})
+        meta = {
+            "model": raw.get("model", self.model),
+            "latency": latency,
+            "usage": usage,
+            "finish_reason": choice.get("finish_reason"),
+        }
+        return content, meta
 
     def structured_complete(
         self,

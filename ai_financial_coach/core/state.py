@@ -13,6 +13,7 @@ class SharedState:
     goals: GoalsState = field(default_factory=GoalsState)
     findings: Dict[str, Any] = field(default_factory=dict)
     plans: Dict[str, Any] = field(default_factory=dict)
+    llm_status: Dict[str, Dict[str, Any]] = field(default_factory=dict)
     message_bus: MessageBus = field(default_factory=MessageBus)
 
     def update_inputs(self, **kwargs: Any) -> None:
@@ -26,6 +27,10 @@ class SharedState:
 
     def record_plan(self, agent: str, payload: Any) -> None:
         self.plans[agent] = payload
+
+    def update_llm_status(self, agent: str, **kwargs: Any) -> None:
+        bucket = self.llm_status.setdefault(agent, {})
+        bucket.update(kwargs)
 
     def post_message(
         self,
@@ -54,4 +59,5 @@ class SharedState:
         self.inputs.clear()
         self.findings.clear()
         self.plans.clear()
+        self.llm_status.clear()
         self.message_bus.reset()

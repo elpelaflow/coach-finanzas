@@ -39,6 +39,7 @@ class Goal(BaseModel):
 class GoalsState(BaseModel):
     objective: Optional[str] = None
     horizon: Optional[str] = None
+    horizon_months: Optional[int] = None
     priorities: List[str] = Field(default_factory=list)
     constraints: List[str] = Field(default_factory=list)
 

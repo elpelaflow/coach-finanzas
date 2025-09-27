@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import io
 import json
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List
 
 import pandas as pd
@@ -9,8 +10,8 @@ import streamlit as st
 
 from ai_financial_coach.agents import AgentTeam
 from ai_financial_coach.app.components import display_budget_analysis
-from ai_financial_coach.app.context import get_agent_team, get_shared_state
-from ai_financial_coach.core.database import save_movements_to_db
+from ai_financial_coach.app.context import get_agent_team, get_shared_state, reload_prompts
+from ai_financial_coach.core.database import fetch_data_from_db, save_movements_to_db
 from ai_financial_coach.core.schemas import BudgetAnalysis, MessageType
 from ai_financial_coach.core.state import SharedState
 from ai_financial_coach.core.system import FinanceAdvisorSystem
@@ -33,25 +34,45 @@ def render_sidebar() -> None:
         st.divider()
         st.subheader("Descargar movimientos")
 
-        st.date_input("Desde")
-        st.date_input("Hasta", value=None)
+        default_start = st.session_state.get("download_start_value", date.today().replace(day=1))
+        default_end = st.session_state.get("download_end_value", date.today())
+        start_date = st.date_input("Desde", value=default_start, key="download_start_value")
+        end_date = st.date_input("Hasta", value=default_end, key="download_end_value")
+
+        if end_date < start_date:
+            st.warning("La fecha final no puede ser anterior a la inicial.")
+            end_date = start_date
+
+        try:
+            df = fetch_data_from_db(start_date, end_date)
+        except Exception as exc:  # pragma: no cover - defensivo
+            st.error(f"No se pudieron obtener movimientos: {exc}")
+            df = pd.DataFrame()
+
+        if df.empty:
+            st.caption("No hay registros en el rango seleccionado.")
+
+        csv_data = io.StringIO()
+        json_data = io.StringIO()
+        if not df.empty:
+            df.to_csv(csv_data, index=False)
+            json_data.write(df.to_json(orient="records", force_ascii=False))
 
         st.download_button(
             label="Descargar como CSV",
-            data="placeholder_csv",
+            data=csv_data.getvalue(),
             file_name="movimientos.csv",
             mime="text/csv",
-            disabled=True,
+            disabled=df.empty,
         )
 
         st.download_button(
             label="Descargar como JSON",
-            data="placeholder_json",
+            data=json_data.getvalue(),
             file_name="movimientos.json",
             mime="application/json",
-            disabled=True,
+            disabled=df.empty,
         )
-
 
 def render_forms() -> None:
     col1, col2, col3 = st.columns(3)
@@ -91,7 +112,7 @@ def render_forms() -> None:
             st.subheader("Gastos")
             gasto_cat = st.radio(
                 "Categoria de gasto",
-                ["Fijo", "Variable", "Discrecional", "Urgente"],
+                ["Fijo", "Variable", "Discrecional", "Deuda"],
                 key="gasto_tipo",
                 horizontal=True,
             )
@@ -136,7 +157,7 @@ def render_forms() -> None:
                     add_movement(
                         {
                             "timestamp": datetime.now().isoformat(),
-                            "type": "Urgente",
+                            "type": "Deuda",
                             "category": deuda_cat,
                             "amount": deuda_monto,
                             "comment": deuda_comentario,
@@ -175,7 +196,7 @@ def run_analysis(
             "min_payment": 0,
         }
         for movement in movements
-        if movement["type"] == "Urgente"
+        if movement["type"] == "Deuda"
     ]
 
     financial_data = {
@@ -299,6 +320,53 @@ def render_debt_tab(shared_state: SharedState) -> None:
 
 
 def render_ai_team_tab(shared_state: SharedState, team: AgentTeam) -> None:
+    prompt_info = team.get_prompt_metadata()
+    header_cols = st.columns([2, 1, 1])
+    with header_cols[0]:
+        manager_prompt = prompt_info.get("manager", "manager_agent.txt")
+        st.markdown(f"**Prompt Manager:** `{manager_prompt}`")
+        advisor_prompt = prompt_info.get("advisor")
+        if advisor_prompt:
+            st.caption(f"Prompt Advisor: `{advisor_prompt}`")
+    with header_cols[1]:
+        if st.button("Recargar prompts", key="reload_prompts_btn"):
+            reload_prompts()
+            st.success("Prompts recargados.")
+    with header_cols[2]:
+        if st.button("Probar conexion LLM", key="probe_llm_btn"):
+            try:
+                result = team.probe_llm()
+                if result.get("ok"):
+                    st.success(f"Modelo {result.get('model', 'desconocido')} OK: {result.get('response', '')}")
+                else:
+                    st.warning(f"Error LLM: {result.get('error', 'desconocido')}")
+            except RuntimeError as err:
+                st.warning(str(err))
+            except Exception as exc:  # pragma: no cover - defensivo
+                st.error(f"Fallo la prueba LLM: {exc}")
+
+    llm_model = team.get_llm_model() or "sin configurar"
+    llm_status = shared_state.llm_status
+    st.caption(f"Modelo activo: `{llm_model}`")
+    connection_ok = any(status.get("ok") for status in llm_status.values()) if llm_status else False
+    connection_label = "OK" if connection_ok else "SIN CONEXION"
+    st.caption(f"Conexion LLM: {connection_label}")
+    if llm_status:
+        status_rows = []
+        for agent, status in llm_status.items():
+            usage = status.get("usage") or {}
+            status_rows.append({
+                "agente": agent,
+                "ok": status.get("ok"),
+                "latencia_s": round(status.get("latency"), 2) if status.get("latency") else None,
+                "tokens": usage.get("total_tokens"),
+                "respuesta": status.get("response"),
+                "error": status.get("error"),
+            })
+        st.dataframe(pd.DataFrame(status_rows), use_container_width=True)
+    else:
+        st.info("Sin eventos recientes del LLM.")
+
     st.subheader("Chat con el Manager")
     with st.form("manager_chat_form"):
         user_message = st.text_area("Mensaje para el Manager", key="manager_chat_input")
@@ -310,6 +378,13 @@ def render_ai_team_tab(shared_state: SharedState, team: AgentTeam) -> None:
                 st.success("Mensaje enviado al Manager.")
             else:
                 st.warning("Escribe un mensaje antes de enviar.")
+
+    if st.button("Ejecutar ronda con estos objetivos", key="execute_round_goals"):
+        outputs = team.run_round(reason="manual_goals")
+        st.session_state.last_round_outputs = {
+            key: value.dict() if value else None for key, value in outputs.items()
+        }
+        st.success("Ronda ejecutada.")
 
     conversation = [
         message
@@ -325,8 +400,7 @@ def render_ai_team_tab(shared_state: SharedState, team: AgentTeam) -> None:
         st.info("Aun no hay mensajes en la conversacion.")
 
     st.subheader("Estado de objetivos")
-    goals = shared_state.goals.dict()
-    st.json(goals)
+    st.json(shared_state.goals.dict())
 
     st.subheader("Delegaciones del Manager")
     delegations = shared_state.plans.get("manager", {}).get("delegations", [])
@@ -363,16 +437,8 @@ def render_ai_team_tab(shared_state: SharedState, team: AgentTeam) -> None:
     types = sorted(log_df["type"].unique())
 
     filter_cols = st.columns(2)
-    selected_senders = filter_cols[0].multiselect(
-        "Agentes",
-        options=senders,
-        default=senders,
-    )
-    selected_types = filter_cols[1].multiselect(
-        "Tipos",
-        options=types,
-        default=types,
-    )
+    selected_senders = filter_cols[0].multiselect("Agentes", options=senders, default=senders)
+    selected_types = filter_cols[1].multiselect("Tipos", options=types, default=types)
 
     mask = log_df["sender"].isin(selected_senders) & log_df["type"].isin(selected_types)
     st.dataframe(log_df[mask], use_container_width=True)
@@ -380,7 +446,6 @@ def render_ai_team_tab(shared_state: SharedState, team: AgentTeam) -> None:
     if st.session_state.get("last_round_outputs"):
         with st.expander("Ultima ronda (mensajes emitidos)"):
             st.json(st.session_state.last_round_outputs)
-
 
 def render_dashboard() -> None:
     ensure_session_state()
@@ -394,7 +459,7 @@ def render_dashboard() -> None:
             "Movimientos",
             "Presupuesto",
             "Ahorro",
-            "Urgente",
+            "Deuda",
             "Equipo IA",
         ]
     )
